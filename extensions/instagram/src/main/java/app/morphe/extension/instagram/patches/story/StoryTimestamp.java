@@ -29,7 +29,7 @@ public class StoryTimestamp {
             if (CUSTOMISE_STORY_TIMESTAMP.equals("detailed")) {
                 Date date = new Date(postedTS);
                 SimpleDateFormat format =
-                        new SimpleDateFormat("EEEE, MMMM dd HH:mm:ss", Locale.getDefault());
+                        new SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault());
                 formatedTS = format.format(date);
 
             } else if (CUSTOMISE_STORY_TIMESTAMP.equals("posttime")) {

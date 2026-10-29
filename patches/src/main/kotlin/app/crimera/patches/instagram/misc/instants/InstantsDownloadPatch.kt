@@ -34,6 +34,7 @@ val instantsDownloadPatch =
     bytecodePatch(
         name = "Download Instants",
         description = "Adds a download button near the 3 dots when viewing Instants and saves them to vault.",
+        default = true,
     ) {
         dependsOn(settingsPatch, instantsDownloadResourcePatch, decoderEntity)
         compatibleWith(COMPATIBILITY_INSTAGRAM)

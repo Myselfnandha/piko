@@ -45,6 +45,7 @@ val hideReelsFollowButtonPatch =
     bytecodePatch(
         name = "Hide Reels follow button",
         description = "Removes the follow button from Reels.",
+        default = true,
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
 

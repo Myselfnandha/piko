@@ -21,7 +21,7 @@ val externalDownloaderPatch =
     bytecodePatch(
         name = "External downloader",
         description = "Adds support to share post links directly to external downloader",
-        default = true,
+        default = false,
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(settingsPatch, mediaDataEntity, hookOverflowMenuButton, debugOverflowMenuButtonPatch, hookReelOverflowMenuButton)

@@ -41,7 +41,7 @@ val hideSuggestedContentPatch =
     bytecodePatch(
         name = "Hide suggested content",
         description = "Hides suggested stories, reels, threads (Suggested posts will still be shown).",
-        default = true,
+        default = false,
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(settingsPatch)

@@ -19,6 +19,7 @@ val profileMoreOptionsPatch =
     bytecodePatch(
         name = "More options on profile",
         description = "Adds a new button to handle user related data like copy handle, download profile picture etc",
+        default = true,
     ) {
         dependsOn(settingsPatch, userProfileButtonPatch, userProfileActionBarButtonPatch, userDataEntity, instagramDialogBoxEntity)
 

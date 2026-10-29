@@ -23,7 +23,7 @@ val filterStoriesPatch =
     bytecodePatch(
         name = "Filter stories",
         description = "Filter stories to hide based on different categories",
-        default = true,
+        default = false,
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(settingsPatch, reelResponseItemEntity, userDataEntity)

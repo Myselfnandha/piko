@@ -169,6 +169,14 @@ public final class InstantDownloadView {
 
     private static void injectButton(ViewGroup parent, View anchor) {
         try {
+            // Also enable long-press on anchor (3-dots) to open instant download options as fallback
+            try {
+                anchor.setOnLongClickListener(v -> {
+                    InstantsDownloadHook.showInstantOptions(v.getContext());
+                    return true;
+                });
+            } catch (Throwable ignored) {}
+
             for (int i = 0; i < parent.getChildCount(); i++) {
                 View child = parent.getChildAt(i);
                 if (BUTTON_TAG.equals(child.getTag())) {
@@ -198,8 +206,16 @@ public final class InstantDownloadView {
             button.setContentDescription(str("piko_download_current_media"));
 
             int anchorIndex = parent.indexOfChild(anchor);
-            ViewGroup.LayoutParams lp = copyLayoutParams(anchor.getLayoutParams());
-            parent.addView(button, Math.max(0, anchorIndex), lp);
+            ViewGroup.LayoutParams lp = copyLayoutParams(parent, anchor);
+            try {
+                parent.addView(button, Math.max(0, anchorIndex), lp);
+            } catch (Throwable t1) {
+                try {
+                    parent.addView(button, lp);
+                } catch (Throwable t2) {
+                    parent.addView(button);
+                }
+            }
 
             button.setOnTouchListener((v, event) -> {
                 ViewParent p = v.getParent();
@@ -218,13 +234,35 @@ public final class InstantDownloadView {
         }
     }
 
-    private static ViewGroup.LayoutParams copyLayoutParams(ViewGroup.LayoutParams source) {
-        if (source instanceof ViewGroup.MarginLayoutParams) {
-            return new ViewGroup.MarginLayoutParams((ViewGroup.MarginLayoutParams) source);
-        }
+    private static ViewGroup.LayoutParams copyLayoutParams(ViewGroup parent, View anchor) {
+        ViewGroup.LayoutParams source = anchor != null ? anchor.getLayoutParams() : null;
         if (source != null) {
-            return new ViewGroup.LayoutParams(source);
+            try {
+                java.lang.reflect.Constructor<?> ctor = source.getClass().getConstructor(source.getClass());
+                return (ViewGroup.LayoutParams) ctor.newInstance(source);
+            } catch (Throwable ignored) {}
+
+            try {
+                java.lang.reflect.Constructor<?> ctor = source.getClass().getConstructor(ViewGroup.LayoutParams.class);
+                return (ViewGroup.LayoutParams) ctor.newInstance(source);
+            } catch (Throwable ignored) {}
         }
-        return new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+
+        try {
+            java.lang.reflect.Method m = ViewGroup.class.getDeclaredMethod("generateLayoutParams", ViewGroup.LayoutParams.class);
+            m.setAccessible(true);
+            return (ViewGroup.LayoutParams) m.invoke(parent, source != null ? source : new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        } catch (Throwable ignored) {}
+
+        if (source instanceof ViewGroup.MarginLayoutParams) {
+            try {
+                return new ViewGroup.MarginLayoutParams((ViewGroup.MarginLayoutParams) source);
+            } catch (Throwable ignored) {}
+        }
+
+        int w = anchor != null && anchor.getWidth() > 0 ? anchor.getWidth() : ViewGroup.LayoutParams.WRAP_CONTENT;
+        int h = anchor != null && anchor.getHeight() > 0 ? anchor.getHeight() : ViewGroup.LayoutParams.WRAP_CONTENT;
+        return new ViewGroup.LayoutParams(w, h);
     }
 }

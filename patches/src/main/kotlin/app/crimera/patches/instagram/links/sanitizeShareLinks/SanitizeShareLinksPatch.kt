@@ -15,6 +15,7 @@ import app.morphe.patcher.patch.bytecodePatch
 val sanitizeShareLinksPatch =
     bytecodePatch(
         name = "Sanitize share links",
+        default = true,
     ) {
 
         dependsOn(shareLinksPatch)

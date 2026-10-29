@@ -22,7 +22,7 @@ val themePatch =
             "Adds Material You and AMOLED controls to Piko settings " +
                 "on Android 12 and later. On Android 8–11, it applies a fixed " +
                 "Material You-style theme or an optional AMOLED theme.",
-        default = true,
+        default = false,
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
 

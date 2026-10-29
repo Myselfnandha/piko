@@ -26,7 +26,7 @@ val disableDoubleTapPatch =
     bytecodePatch(
         name = "Disable double tap like",
         description = "Disable double tap like on post, reel, comment and message",
-        default = true,
+        default = false,
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(

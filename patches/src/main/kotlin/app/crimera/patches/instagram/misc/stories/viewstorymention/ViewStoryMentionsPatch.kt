@@ -35,17 +35,37 @@ private object SupportingTextViewFingerprint : Fingerprint(
     returnType = "Landroid/widget/TextView;",
 )
 
+private object StoryHeaderBindingFingerprint : Fingerprint(
+    strings = listOf("ReelViewerItemBinder.bindHeaderViews"),
+)
+
 @Suppress("unused")
 val viewStoryMentionsPatch =
     bytecodePatch(
         name = "View story mentions",
         description = "Add option to view visible and hidden story mentions.",
+        default = true,
     ) {
         dependsOn(settingsPatch, handleStoryButtonPatch, userDataEntity, mediaDataEntity, instagramDialogBoxEntity, videoDataEntity)
 
         compatibleWith(COMPATIBILITY_INSTAGRAM)
 
         execute {
+            try {
+                val headerBindingMethod = StoryHeaderBindingFingerprint.method
+                val itemParamIndex = headerBindingMethod.parameterTypes.indexOfFirst {
+                    it.toString().contains("ReelItem")
+                }
+                if (itemParamIndex >= 0) {
+                    headerBindingMethod.addInstruction(
+                        0,
+                        "invoke-static {p$itemParamIndex}, $PATCHES_DESCRIPTOR/story/StoryMentionsView;->onStoryHeaderBound(Ljava/lang/Object;)V",
+                    )
+                }
+            } catch (t: Throwable) {
+                // Failsafe in case story header fingerprint is not matched in some builds
+            }
+
             val supportingText = SupportingTextViewFingerprint.matchSingle()
             val supportingField = supportingText.method.instructions
                 .filter { it.opcode == Opcode.IGET_OBJECT }

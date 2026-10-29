@@ -40,6 +40,7 @@ val downloadMediaPatch =
     bytecodePatch(
         name = "Download media",
         description = "Adds ability to download posts, reels, stories and highlights",
+        default = true,
     ) {
         dependsOn(
             settingsPatch,

@@ -76,6 +76,10 @@ public final class StoryMentionsView {
         }
     }
 
+    public static void onStoryHeaderBound(Object storyItem) {
+        updateStoryMentions(null, storyItem);
+    }
+
     public static void updateStoryMentions(View root, Object storyItem) {
         try {
             if (storyItem == null) return;
@@ -401,14 +405,17 @@ public final class StoryMentionsView {
 
     private static LinearLayout findTitleRow(ViewGroup header) {
         int id = getTitleId();
-        if (id == 0) return null;
-
-        View title = header.findViewById(id);
-        if (title != null && title.getParent() instanceof LinearLayout) {
-            LinearLayout parent = (LinearLayout) title.getParent();
-            if (parent != header && parent.getOrientation() == LinearLayout.HORIZONTAL) {
-                return parent;
+        if (id != 0) {
+            View title = header.findViewById(id);
+            if (title != null && title.getParent() instanceof LinearLayout) {
+                LinearLayout parent = (LinearLayout) title.getParent();
+                if (parent.getOrientation() == LinearLayout.HORIZONTAL) {
+                    return parent;
+                }
             }
+        }
+        if (header instanceof LinearLayout && ((LinearLayout) header).getOrientation() == LinearLayout.HORIZONTAL) {
+            return (LinearLayout) header;
         }
         return null;
     }

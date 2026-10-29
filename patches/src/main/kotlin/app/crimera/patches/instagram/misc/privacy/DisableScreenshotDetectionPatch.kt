@@ -45,7 +45,7 @@ val disableScreenshotDetection =
     bytecodePatch(
         name = "Disable screenshot detection",
         description = "Disables screenshots detection in DM",
-        default = false,
+        default = true,
     ) {
         dependsOn(settingsPatch)
         compatibleWith(COMPATIBILITY_INSTAGRAM)

@@ -64,6 +64,7 @@ val friendshipStatusIndicatorPatch =
         description =
             "Adds a follows you back status label on the profile page and" +
                 "shows a detailed friendship status breakdown on click",
+        default = true,
     ) {
 
         dependsOn(settingsPatch, userDataEntity, profileInfoEntity, instagramDialogBoxEntity)

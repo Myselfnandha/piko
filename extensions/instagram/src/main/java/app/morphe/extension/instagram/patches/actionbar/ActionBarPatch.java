@@ -206,12 +206,9 @@ public class ActionBarPatch {
                 ghostModeToggle(viewGroup);
             }
 
-            if(pref.contains(Constants.AB_PROFILE_INFO_ICON)) {
+            if (!isSelfProfile) {
                 UI.addImageViewToViewGroup(viewGroup, UI.DRAWABLE_INFO_ICON, () -> ProfileMoreOption.moreOptionsDailogueBox(activity, userData));
             }
-
-            // Move more profile options to the profile 3 dots menu
-            ProfileMoreOption.hookProfileThreeDots(activity, viewGroup, userData, isSelfProfile);
 
 
         } catch (Exception e) {

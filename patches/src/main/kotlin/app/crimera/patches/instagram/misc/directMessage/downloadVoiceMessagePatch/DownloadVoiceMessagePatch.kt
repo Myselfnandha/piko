@@ -17,6 +17,7 @@ val downloadVoiceMessagePatch =
     bytecodePatch(
         name = "Download voice message",
         description = "Enables ability to download voice messages",
+        default = true,
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(messageInfoEntity, saveAllMessagesPatch)

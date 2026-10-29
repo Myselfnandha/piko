@@ -41,6 +41,7 @@ internal object DMOnTextChangedFingerprint : Fingerprint(
 val disableTypingStatusPatch =
     bytecodePatch(
         name = "Disable typing status",
+        default = true,
     ) {
         dependsOn(settingsPatch, chatActionBarButtonPatch, inboxActionBarButtonPatch)
         compatibleWith(COMPATIBILITY_INSTAGRAM)

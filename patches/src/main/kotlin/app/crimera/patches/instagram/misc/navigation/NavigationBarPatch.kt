@@ -377,6 +377,7 @@ val navigationBarPatch =
     bytecodePatch(
         name = "Customize navigation bar",
         description = "Choose which tabs appear in the bottom navigation bar and reorder them",
+        default = true,
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(settingsPatch)
