@@ -148,6 +148,7 @@
     <string name="piko_download_profile_picture">Download profile picture</string>
     <string name="piko_copied">Copied</string>
     <string name="piko_more_profile_options">More profile options</string>
+    <string name="piko_stock_options">Instagram options…</string>
     <string name="piko_remove_empty_bottom_space">Remove empty bottom space</string>
     <string name="piko_inbox_lock">Inbox lock</string>
     <string name="piko_inbox_lock_desc">Hides your inbox behind your fingerprint, face or screen lock every time you open the app</string>
@@ -218,6 +219,7 @@
     <string name="piko_download_options">Download options</string>
     <string name="piko_copy_media_link">Copy media link</string>
     <string name="piko_copied_media_link">Copied media link</string>
+    <string name="piko_no_internet">Please connect to internet</string>
     <string name="piko_download_all">Download all</string>
     <string name="piko_downloading_media">Downloading: </string>
     <string name="piko_downloaded_media">Downloaded: </string>
@@ -309,6 +311,7 @@
     <string name="piko_change_like_animation_desc">Change the animation to one from existing Rings like animations</string>
     <string name="piko_available_like_animation">Available like animations</string>
     <string name="piko_like_animation_random">Random</string>
+    <string name="piko_like_animation_ios">iOS Classic Pop (Spring Bounce)</string>
     <string name="piko_like_animation_preview">Animation preview</string>
     <string name="piko_like_animation_preview_unavailable">Preview unavailable</string>
 
@@ -320,13 +323,6 @@
 
     <string name="piko_array_recmd_flag_state_enable">Enable</string>
     <string name="piko_array_recmd_flag_state_disable">Disable</string>
-
-    <!-- Welcome Message -->
-    <string name="piko_welcome_title">Welcome to Piko</string>
-    <string name="piko_welcome_message">To improve your experience with Piko, please vist Piko settings and adjust your preference</string>
-    <string name="piko_goto_piko_settings">Goto Piko settings</string>
-    <string name="piko_no_internet">Please connect to internet</string>
-    <string name="piko_tap_here">Tap here !!</string>
 
     <!-- Action Bar Section -->
     <string name="piko_category_action_bar">Action bar</string>
@@ -342,8 +338,8 @@
     <string name="piko_action_bar_button_create_icon">Create icon</string>
     <string name="piko_action_bar_button_notifications_icon">Notifications icon</string>
 
-    <string name="piko_settings_on_action_bar">Piko settings on action bar</string>
-    <string name="piko_settings_on_action_bar_desc">Move Piko settings entry point to main feed action bar</string>
+    <string name="piko_settings_on_action_bar">Alan settings on action bar</string>
+    <string name="piko_settings_on_action_bar_desc">Move Alan settings entry point to main feed action bar</string>
 
     <!-- Font Section -->
     <string name="piko_category_font">Font</string>

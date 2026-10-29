@@ -25,6 +25,7 @@ import app.morphe.extension.shared.ResourceUtils;
 
 public class ChangeLikeAnimationPatch {
     public static final String RANDOM = "RANDOM";
+    public static final String IOS = "IOS_LIKE_ANIMATION";
     private static final String DEFAULT = "ARES_LIKE_ACTIVATION";
     private static final String LAST_RANDOM = "last_random_like_animation";
     private static final String CHANGE_LIKE_ANIMATION = Pref.changeLikeAnimation();
@@ -61,16 +62,48 @@ public class ChangeLikeAnimationPatch {
     }
 
     private static Object selectedAnimation() throws Exception {
-        if (CHANGE_LIKE_ANIMATION == null || DEFAULT.equals(CHANGE_LIKE_ANIMATION)) return null;
+        if (CHANGE_LIKE_ANIMATION == null || DEFAULT.equals(CHANGE_LIKE_ANIMATION) || IOS.equals(CHANGE_LIKE_ANIMATION)) return null;
         String name = RANDOM.equals(CHANGE_LIKE_ANIMATION)
                 ? sessionAnimation() : CHANGE_LIKE_ANIMATION;
-        if (DEFAULT.equals(name)) return null;
+        if (DEFAULT.equals(name) || IOS.equals(name)) return null;
         return new Entity().getMethod(animationClass(), "valueOf", name);
     }
 
     private static Object mapAnimation(Object animation) {
         // Replaced with Instagram's mapping from metadata to rendering animations.
         return null;
+    }
+
+    public static boolean handleLikePlayback(Object viewObj, boolean isFinished, float progress) {
+        try {
+            if (!IOS.equals(Pref.changeLikeAnimation())) return false;
+            if (!(viewObj instanceof android.view.View)) return false;
+            android.view.View view = (android.view.View) viewObj;
+            if (isFinished) {
+                view.setAlpha(0f);
+                view.setScaleX(1f);
+                view.setScaleY(1f);
+                return true;
+            }
+            // iOS spring bounce: quick pop overshoot to ~1.35x, then settle back to 1.0x with subtle fade
+            float scale;
+            if (progress <= 0f) {
+                scale = 0f;
+            } else if (progress < 0.6f) {
+                float fraction = progress / 0.6f;
+                scale = fraction * 1.35f;
+            } else {
+                float fraction = (progress - 0.6f) / 0.4f;
+                scale = 1.35f - (fraction * 0.35f);
+            }
+            view.setScaleX(scale);
+            view.setScaleY(scale);
+            float alpha = progress > 0.85f ? Math.max(0f, (1.0f - progress) / 0.15f) : 1.0f;
+            view.setAlpha(alpha);
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     private static synchronized String sessionAnimation() throws ClassNotFoundException {
@@ -88,7 +121,7 @@ public class ChangeLikeAnimationPatch {
             available.add(((Enum<?>) value).name());
         }
         for (String name : ResourceUtils.getStringArray("piko_array_change_like_animation_val")) {
-            if (DEFAULT.equals(name) || RANDOM.equals(name)) continue;
+            if (DEFAULT.equals(name) || RANDOM.equals(name) || IOS.equals(name)) continue;
             if (available.contains(name)) candidates.add(name);
         }
         if (candidates.size() > 1) candidates.remove(previous);
@@ -97,6 +130,7 @@ public class ChangeLikeAnimationPatch {
     }
 
     public static String previewAnimation(String selection) throws ClassNotFoundException {
+        if (IOS.equals(selection)) return IOS;
         // Trying Random in the dialog must not change the animation used by the feed.
         return RANDOM.equals(selection) ? randomAnimation("") : selection;
     }

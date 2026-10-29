@@ -19,8 +19,8 @@ public class WelcomeMessage {
 
     public static void openWelcomeMessage(Context context) {
         try {
-            if(Pref.firstTimePiko()) {
-                UI.welcomeDialogBox(context);
+            if (Pref.firstTimePiko()) {
+                Pref.setFirstTimePiko(false);
             }
         } catch (Exception ex) {
             Logger.printException(() -> "openWelcomeMessage failure", ex);

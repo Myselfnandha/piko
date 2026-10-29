@@ -32,8 +32,8 @@ private const val INSTANTS_DOWNLOAD_HOOK_DESCRIPTOR = "$INSTANTS_DESCRIPTOR/Inst
 @Suppress("unused")
 val instantsDownloadPatch =
     bytecodePatch(
-        name = "Save Instants",
-        description = "Captures view-once Instants as you view them so you can re-view and download them later.",
+        name = "Download Instants",
+        description = "Adds a download button near the 3 dots when viewing Instants and saves them to vault.",
     ) {
         dependsOn(settingsPatch, instantsDownloadResourcePatch, decoderEntity)
         compatibleWith(COMPATIBILITY_INSTAGRAM)
@@ -50,7 +50,7 @@ val instantsDownloadPatch =
                 enableSettings("instantsDownload")
             }.onFailure { error ->
                 println(
-                    "[piko] Save Instants: DISABLED for this build — could not resolve the " +
+                    "[Alan] Download Instants: DISABLED for this build — could not resolve the " +
                         "quicksnap item: ${error.message}",
                 )
             }

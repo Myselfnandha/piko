@@ -96,6 +96,10 @@ public final class LikeAnimationPreference extends ListPref {
         String selection = getEntryValues()[selectedIndex].toString();
         try {
             String name = ChangeLikeAnimationPatch.previewAnimation(selection);
+            if (ChangeLikeAnimationPatch.IOS.equals(name)) {
+                playIosPreview();
+                return;
+            }
             if (Settings.CHANGE_LIKE_ANIMATION.defaultValue.equals(name)) {
                 playDefaultPreview();
                 return;
@@ -112,6 +116,30 @@ public final class LikeAnimationPreference extends ListPref {
             showUnavailablePreview();
             Logger.printException(() -> "Could not preview like animation", exception);
         }
+    }
+
+    private void playIosPreview() {
+        Context instagramContext = Utils.getActivity();
+        Drawable heart = instagramContext == null ? null
+                : ChangeLikeAnimationPatch.defaultPreviewDrawable(instagramContext);
+        if (heart == null) {
+            showUnavailablePreview();
+            return;
+        }
+        preview.setImageDrawable(heart);
+        AnimatorSet appear = new AnimatorSet();
+        appear.playTogether(
+                ObjectAnimator.ofFloat(preview, View.SCALE_X, 0f, 1.35f, 1f),
+                ObjectAnimator.ofFloat(preview, View.SCALE_Y, 0f, 1.35f, 1f),
+                ObjectAnimator.ofFloat(preview, View.ALPHA, 0f, 1f, 1f));
+        appear.setDuration(450);
+        appear.setInterpolator(new OvershootInterpolator(2.2f));
+        ObjectAnimator disappear = ObjectAnimator.ofFloat(preview, View.ALPHA, 1f, 0f);
+        disappear.setStartDelay(350);
+        disappear.setDuration(220);
+        defaultAnimation = new AnimatorSet();
+        defaultAnimation.playSequentially(appear, disappear);
+        defaultAnimation.start();
     }
 
     private void playDefaultPreview() {

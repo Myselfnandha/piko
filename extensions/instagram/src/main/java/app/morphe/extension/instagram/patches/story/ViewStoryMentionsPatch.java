@@ -54,7 +54,13 @@ public class ViewStoryMentionsPatch {
                     }
                 });
             }
-            PeopleCellDialogBox.showPeopleDialog(context, peopleCells);
+            try {
+                PeopleCellDialogBox.showPeopleDialog(context, peopleCells);
+            } catch (Throwable dialogEx) {
+                if (mentionSet != null && !mentionSet.isEmpty()) {
+                    StoryMentionsView.showMentionsDialog(context, new ArrayList<>(mentionSet));
+                }
+            }
 
         } catch (Exception ex){
             Logger.printException(() -> "Failed viewMentions", ex);

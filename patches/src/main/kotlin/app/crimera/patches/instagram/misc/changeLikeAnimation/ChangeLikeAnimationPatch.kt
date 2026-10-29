@@ -16,11 +16,14 @@ import app.crimera.utils.changeString
 import app.crimera.utils.classNameToExtension
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.util.smali.ExternalLabel
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.util.getReference
 import app.morphe.util.indexOfFirstInstruction
@@ -173,6 +176,17 @@ private fun installAnimationRendering(animationType: String) {
         it.name == "stop" && it.parameterTypes.isEmpty() && it.returnType == "V" &&
             AccessFlags.PUBLIC.isSet(it.accessFlags)
     } ?: throw PatchException("Expected one native animation stop method")
+
+    playback.addInstructionsWithLabels(
+        0,
+        """
+        invoke-static {p0, p1, p2}, $EXTENSION_CLASS_DESCRIPTOR->handleLikePlayback(Ljava/lang/Object;ZF)Z
+        move-result v0
+        if-nez v0, :alan_continue
+        return-void
+        """.trimIndent(),
+        ExternalLabel("alan_continue", playback.getInstruction(0)),
+    )
 
     Fingerprint(name = "previewDrawable", definingClass = EXTENSION_CLASS_DESCRIPTOR).method.addInstructions(
         0,

@@ -78,6 +78,7 @@ public final class StorySeenButton {
                 root instanceof View ? (View) root : null,
                 false
         );
+        StoryMentionsView.updateStoryMentions(root instanceof View ? (View) root : null, item);
     }
 
     public static void captureCurrentStoryFromHeader(
@@ -91,6 +92,7 @@ public final class StorySeenButton {
                 root instanceof View ? (View) root : null,
                 true
         );
+        StoryMentionsView.updateStoryMentions(root instanceof View ? (View) root : null, item);
     }
 
     public static void invalidateCurrentStory() {

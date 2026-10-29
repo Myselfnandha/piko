@@ -10,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 
+import app.morphe.extension.instagram.patches.navigation.NavigationBarPatch;
 import app.morphe.extension.instagram.patches.navigation.NavigationBarPatch.NotificationsVisibility;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
@@ -17,6 +18,8 @@ import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.function.Supplier;
@@ -58,6 +61,7 @@ final class HomeActionBarLayout {
         private final WeakReference<ViewGroup> actionBar;
         private Supplier<NotificationsVisibility> stateProvider;
         private WeakReference<ViewGroup> collapsedContainer;
+        private final List<WeakReference<View>> hiddenInboxViews = new ArrayList<>();
         private int originalVisibility = -1;
         private ViewTreeObserver observer;
         private boolean attachListenerRegistered;
@@ -91,6 +95,7 @@ final class HomeActionBarLayout {
             }
             observer = null;
             restore();
+            restoreInboxViews();
         }
 
         @Override
@@ -123,6 +128,13 @@ final class HomeActionBarLayout {
                 );
                 View view = id == 0 ? null : bar.findViewById(id);
                 if (!(view instanceof ViewGroup)) {
+                    if (id != 0 && bar.getId() == id) {
+                        view = bar;
+                    } else if (bar.getParent() instanceof View && id != 0) {
+                        view = ((View) bar.getParent()).findViewById(id);
+                    }
+                }
+                if (!(view instanceof ViewGroup)) {
                     restore();
                     return;
                 }
@@ -131,9 +143,12 @@ final class HomeActionBarLayout {
                 ViewGroup collapsed = collapsed();
                 if (collapsed != null && collapsed != container) restore();
 
+                boolean hideInbox = NavigationBarPatch.isMessagesTabInBottomBar();
+                updateInboxButton(bar, container, hideInbox);
+
                 NotificationsVisibility state = stateProvider.get();
-                if ((state != NotificationsVisibility.VISIBLE && !Pref.getHideHomeNotificationsButton())
-                        || hasVisibleDirectChild(container)) {
+                boolean hideNotifications = state == NotificationsVisibility.VISIBLE || Pref.getHideHomeNotificationsButton();
+                if (!hideNotifications || hasVisibleDirectChild(container, hideInbox)) {
                     restore();
                 } else if (collapsed() != container
                         && container.getVisibility() != View.GONE) {
@@ -152,10 +167,74 @@ final class HomeActionBarLayout {
             }
         }
 
-        private static boolean hasVisibleDirectChild(ViewGroup container) {
+        private void updateInboxButton(ViewGroup bar, ViewGroup container, boolean hideInbox) {
+            if (hideInbox) {
+                int inboxId = ResourceUtils.getIdentifier(ResourceType.ID, "action_bar_inbox_button");
+                if (inboxId != 0) {
+                    View inbox = container.findViewById(inboxId);
+                    if (inbox == null) inbox = bar.findViewById(inboxId);
+                    hideView(inbox);
+                }
+                for (int i = 0; i < container.getChildCount(); i++) {
+                    View child = container.getChildAt(i);
+                    if (child != null && isDirectMessageView(child)) {
+                        hideView(child);
+                    }
+                }
+            } else {
+                restoreInboxViews();
+            }
+        }
+
+        private void hideView(View view) {
+            if (view != null && view.getVisibility() != View.GONE) {
+                view.setVisibility(View.GONE);
+                hiddenInboxViews.add(new WeakReference<>(view));
+            }
+        }
+
+        private void restoreInboxViews() {
+            for (WeakReference<View> ref : hiddenInboxViews) {
+                View v = ref.get();
+                if (v != null && v.getVisibility() == View.GONE) {
+                    v.setVisibility(View.VISIBLE);
+                }
+            }
+            hiddenInboxViews.clear();
+        }
+
+        private static boolean isDirectMessageView(View view) {
+            if (view == null) return false;
+            int inboxId = ResourceUtils.getIdentifier(ResourceType.ID, "action_bar_inbox_button");
+            if (inboxId != 0 && (view.getId() == inboxId || view.findViewById(inboxId) != null)) {
+                return true;
+            }
+            try {
+                if (view.getId() != View.NO_ID && view.getResources() != null) {
+                    String entryName = view.getResources().getResourceEntryName(view.getId());
+                    if (entryName != null && (entryName.contains("inbox") || entryName.contains("direct"))) {
+                        return true;
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+            CharSequence desc = view.getContentDescription();
+            if (desc != null) {
+                String descStr = desc.toString().toLowerCase();
+                if (descStr.contains("direct") || descStr.contains("message") || descStr.contains("chats") || descStr.contains("inbox")) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static boolean hasVisibleDirectChild(ViewGroup container, boolean ignoreInbox) {
             for (int index = 0; index < container.getChildCount(); index++) {
                 View child = container.getChildAt(index);
-                if (child != null && child.getVisibility() == View.VISIBLE) return true;
+                if (child != null && child.getVisibility() == View.VISIBLE) {
+                    if (ignoreInbox && isDirectMessageView(child)) continue;
+                    return true;
+                }
             }
             return false;
         }
@@ -172,6 +251,9 @@ final class HomeActionBarLayout {
             if (container != null && visibility >= 0
                     && container.getVisibility() != visibility) {
                 container.setVisibility(visibility);
+            }
+            if (!NavigationBarPatch.isMessagesTabInBottomBar()) {
+                restoreInboxViews();
             }
         }
     }

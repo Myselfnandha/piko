@@ -411,7 +411,11 @@ val navigationBarPatch =
             installFragmentNameBridge(fragmentField)
             installStartup(startupMatch.method, allCandidates)
             installTransform(navigationMatch.method, allCandidates)
-            installInitialTabPosition(enumMatch.classDef.type)
+            runCatching {
+                installInitialTabPosition(enumMatch.classDef.type)
+            }.onFailure { error ->
+                println("[Alan] Navigation bar initial tab position hook skipped: ${error.message}")
+            }
             enableSettings("hideNavigationButtons")
         }
     }

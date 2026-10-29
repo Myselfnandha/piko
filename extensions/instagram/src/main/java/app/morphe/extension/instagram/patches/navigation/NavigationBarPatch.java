@@ -48,13 +48,13 @@ public final class NavigationBarPatch {
     }
 
     public enum Tab {
-        HOME("home", "piko_navigation_tab_home", "tab_home_drawable", "fragment_feed", "FEED"),
-        REELS("reels", "piko_navigation_tab_reels", "tab_clips_drawable", "fragment_clips", "CLIPS"),
-        MESSAGES("messages", "piko_navigation_tab_messages", "tab_prism_direct_drawable", "fragment_direct_tab", "DIRECT"),
-        SEARCH("search", "piko_navigation_tab_search", "tab_search_drawable", "fragment_search", "SEARCH"),
-        PROFILE("profile", "piko_navigation_tab_profile", "tab_profile_drawable", "fragment_profile", "PROFILE"),
-        NOTIFICATIONS("notifications", "piko_navigation_tab_notifications", "tab_activity_heart_drawable", "fragment_news", "NEWS"),
-        CREATE("create", "piko_navigation_tab_create", "tab_camera_drawable", "fragment_share", "SHARE", "CREATION");
+        HOME("home", "piko_navigation_tab_home", "tab_home_drawable", "fragment_feed", "FEED", "FEED_SWITCHER"),
+        REELS("reels", "piko_navigation_tab_reels", "tab_clips_drawable", "fragment_clips", "CLIPS", "REELS"),
+        MESSAGES("messages", "piko_navigation_tab_messages", "tab_prism_direct_drawable", "fragment_direct_tab", "DIRECT", "DIRECT_INBOX", "DIRECT_TAB"),
+        SEARCH("search", "piko_navigation_tab_search", "tab_search_drawable", "fragment_search", "SEARCH", "EXPLORE"),
+        PROFILE("profile", "piko_navigation_tab_profile", "tab_profile_drawable", "fragment_profile", "PROFILE", "USER_PROFILE"),
+        NOTIFICATIONS("notifications", "piko_navigation_tab_notifications", "tab_activity_heart_drawable", "fragment_news", "NEWS", "ACTIVITY", "NOTIFICATIONS"),
+        CREATE("create", "piko_navigation_tab_create", "tab_camera_drawable", "fragment_share", "SHARE", "CREATION", "CAMERA");
 
         private final String key;
         private final String labelName;
@@ -97,9 +97,28 @@ public final class NavigationBarPatch {
         }
 
         private static Tab from(String enumName, String fragmentName) {
+            if (enumName == null && fragmentName == null) return null;
+            // 1. Exact match (both match)
             for (Tab tab : values()) {
-                if (tab.fragmentName.equals(fragmentName) && tab.enumNames.contains(enumName)) {
+                if (fragmentName != null && tab.fragmentName.equals(fragmentName)
+                        && enumName != null && tab.enumNames.contains(enumName)) {
                     return tab;
+                }
+            }
+            // 2. Fragment match fallback
+            if (fragmentName != null) {
+                for (Tab tab : values()) {
+                    if (tab.fragmentName.equals(fragmentName)) {
+                        return tab;
+                    }
+                }
+            }
+            // 3. Enum name match fallback
+            if (enumName != null) {
+                for (Tab tab : values()) {
+                    if (tab.enumNames.contains(enumName)) {
+                        return tab;
+                    }
                 }
             }
             return null;
@@ -232,6 +251,15 @@ public final class NavigationBarPatch {
 
     public static NotificationsVisibility effectiveNotificationsVisibility() {
         return notificationsVisibility;
+    }
+
+    public static boolean isMessagesTabInBottomBar() {
+        try {
+            Config config = loadConfig();
+            return config != null && config.visible().contains(Tab.MESSAGES);
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
     public static List<Object> transformNavigationTabs(
@@ -384,14 +412,17 @@ public final class NavigationBarPatch {
     }
 
     private static List<Candidate> classify(List<Object> tabs) {
-        if (tabs == null) throw new IllegalArgumentException();
+        if (tabs == null) return Collections.emptyList();
         List<Candidate> result = new ArrayList<>();
         for (int index = 0; index < tabs.size(); index++) {
             Object value = tabs.get(index);
-            if (!(value instanceof Enum<?>)) throw new IllegalArgumentException();
+            if (!(value instanceof Enum<?>)) continue;
             Enum<?> enumValue = (Enum<?>) value;
-            String fragmentName = navigationFragmentName(value);
-            if (fragmentName == null) throw new IllegalArgumentException();
+            String fragmentName = null;
+            try {
+                fragmentName = navigationFragmentName(value);
+            } catch (Throwable ignored) {
+            }
             result.add(new Candidate(
                     value,
                     Tab.from(enumValue.name(), fragmentName),

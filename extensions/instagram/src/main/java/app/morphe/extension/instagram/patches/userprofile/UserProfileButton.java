@@ -37,24 +37,7 @@ public class UserProfileButton {
     }
 
     public static void addButtons(ViewGroup viewGroup, Object object) {
-        try {
-            ProfileInfo profileInfo = new ProfileInfo(object);
-            Boolean isSelfProfile = profileInfo.isSelfProfile();
-
-            boolean showSettings = !isSettingsInActionBar && isSelfProfile;
-            boolean showProfileOptions = !userProfileABPref.contains(Constants.AB_PROFILE_INFO_ICON)
-                    && Pref.isMoreOptionsOnProfilePatched();
-
-            if (showSettings){
-                UI.pikoSettingsButton(viewGroup, showProfileOptions ? 0 : Dim.dp8);
-            }
-            if(showProfileOptions){
-                ProfileMoreOption.addProfileMoreOptionsButton(viewGroup, profileInfo);
-            }
-        } catch (Exception e) {
-            Logger.printException(() -> "Failed to add piko button: ", e);
-        }
-
+        // Stock bio buttons: do not inject any custom buttons into the profile bio viewGroup.
     }
 }
 

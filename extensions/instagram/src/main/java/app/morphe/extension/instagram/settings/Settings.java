@@ -7,6 +7,7 @@ package app.morphe.extension.instagram.settings;
 
 import app.morphe.extension.crimera.settings.BooleanSetting;
 import app.morphe.extension.crimera.settings.StringSetting;
+import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.patches.download.DownloadFileNameFormatter;
 
 public class Settings {
@@ -108,7 +109,7 @@ public class Settings {
     public static final BooleanSetting HIDE_HOME_NOTIFICATIONS_BUTTON = new BooleanSetting("hide_home_notifications_button", false);
 
     public static final StringSetting ACTION_BAR_MAIN_FEED = new StringSetting("action_bar_main_feed", "");
-    public static final StringSetting ACTION_BAR_USER_PROFILE = new StringSetting("action_bar_user_profile", "");
+    public static final StringSetting ACTION_BAR_USER_PROFILE = new StringSetting("action_bar_user_profile", Constants.AB_SETTINGS_ICON);
     public static final StringSetting ACTION_BAR_CHAT = new StringSetting("action_bar_chat_buttons", "");
     public static final StringSetting ACTION_BAR_INBOX = new StringSetting("action_bar_inbox", "");
 

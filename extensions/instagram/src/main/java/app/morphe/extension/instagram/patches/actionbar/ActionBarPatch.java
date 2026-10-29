@@ -173,6 +173,10 @@ public class ActionBarPatch {
     public static String filterHomeAction(String action) {
         if ("share".equals(action) && Pref.getHideHomeCreateButton()) return null;
         if ("news".equals(action) && Pref.getHideHomeNotificationsButton()) return null;
+        if (("direct".equals(action) || "direct_inbox".equals(action) || "inbox".equals(action) || "messages".equals(action))
+                && NavigationBarPatch.isMessagesTabInBottomBar()) {
+            return null;
+        }
         return action;
     }
 
@@ -205,6 +209,9 @@ public class ActionBarPatch {
             if(pref.contains(Constants.AB_PROFILE_INFO_ICON)) {
                 UI.addImageViewToViewGroup(viewGroup, UI.DRAWABLE_INFO_ICON, () -> ProfileMoreOption.moreOptionsDailogueBox(activity, userData));
             }
+
+            // Move more profile options to the profile 3 dots menu
+            ProfileMoreOption.hookProfileThreeDots(activity, viewGroup, userData, isSelfProfile);
 
 
         } catch (Exception e) {

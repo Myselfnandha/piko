@@ -188,13 +188,13 @@ public class UI {
             if (imageView == null) {
                 return;
             }
+            imageView.setTag("piko_settings_gear");
+            imageView.setOnLongClickListener(v -> {
+                FragmentHook.startSettings();
+                return true;
+            });
 
-            Context context = viewGroup.getContext();
-            boolean isFirstTime = Pref.firstTimePiko();
-            if(isFirstTime) {
-                TooltipHelper.showPersistentTooltip(context, imageView, str("piko_tap_here"));
-                Pref.setFirstTimePiko(false);
-            }
+            Pref.setFirstTimePiko(false);
         } catch (Exception e) {
             Logger.printException(() -> "Failed pikoSettingsGear: ", e);
         }
@@ -235,55 +235,10 @@ public class UI {
     }
 
     public static void welcomeDialogBox(Context context) {
-        InstagramDialogBox dialog = new InstagramDialogBox(context);
-
-        ArrayList<String> options = new ArrayList<>();
-        options.add(str("piko_goto_piko_settings"));
-        CharSequence[] items = options.toArray(new CharSequence[0]);
-
-        dialog.addDialogMenuItems(items, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface d, int which) {
-                try {
-                    // Doing like this because options are dynamic.
-                    String selectedOption = options.get(which);
-
-                    if (selectedOption.equals(str("piko_goto_piko_settings"))) {
-                        PikoUtils.openUrl("instagram://profile",true);
-                    }
-
-                } catch (Exception e) {
-                    Logger.printException(() -> "Error at welcomeDialogBox", e);
-                    Utils.showToastShort(e.getMessage());
-                }
-            }
-        });
-
-        dialog.setTitle(str("piko_welcome_title"));
-        dialog.setMessage(str("piko_welcome_message"));
-        dialog.setCancelable(false);
-        dialog.setCanceledOnTouchOutside(false);
-
-        Dialog dlg = dialog.getDialog();
-        dlg.show();
+        // Welcome message dialog removed
     }
 
     public static void pikoSettingsButton(ViewGroup viewGroup, int bottomMargin) throws Exception {
-        boolean isFirstTime = Pref.firstTimePiko();
-
-        Context context = viewGroup.getContext();
-        InstagramButton button = new InstagramButton(context);
-        button.setText(str("piko_title_settings"));
-        button.setStyle(InstagramButtonStyleEnum.SECONDARY);
-        button.setOnClickListener(FragmentHook::startSettings);
-
-        int marginPx = Dim.dp12;
-        button.setMargins(marginPx, Dim.dp8, marginPx, bottomMargin);
-
-        viewGroup.addView(button.getIgdsButton());
-        if(isFirstTime){
-            button.startPulseAnimation();
-            Pref.setFirstTimePiko(false);
-        }
+        // Disabled full-width button under profile bio to keep profile screen clean and stock
     }
 }

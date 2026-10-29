@@ -1,0 +1,484 @@
+/*
+ * Copyright (C) 2026 piko <https://github.com/crimera/piko>
+ *
+ * See the included NOTICE file for GPLv3 §7(b) terms that apply to this code.
+ */
+
+package app.morphe.extension.instagram.patches.story;
+
+import static app.morphe.extension.instagram.utils.IgStr.str;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.res.ColorStateList;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.Outline;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
+import android.text.TextUtils;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
+import android.view.ViewParent;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+
+import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
+
+import app.morphe.extension.crimera.PikoUtils;
+import app.morphe.extension.instagram.constants.UI;
+import app.morphe.extension.instagram.entity.MediaData;
+import app.morphe.extension.instagram.entity.UserData;
+import app.morphe.extension.instagram.utils.Pref;
+import app.morphe.extension.shared.Logger;
+import app.morphe.extension.shared.ResourceType;
+import app.morphe.extension.shared.ResourceUtils;
+import app.morphe.extension.shared.Utils;
+
+public final class StoryMentionsView {
+    private static final String HEADER_CONTAINER_ID = "reel_viewer_text_container";
+    private static final String TITLE_ID = "reel_viewer_title";
+    private static final String PILL_TAG = "piko_story_mention_pill";
+    private static final int MAX_DEPTH = 8;
+    private static final long[] RETRY_DELAYS = {0, 250, 600};
+
+    private static final Map<View, Object> sLatestStoryItem = new WeakHashMap<>();
+    private static final Map<String, Bitmap> sAvatarCache = new WeakHashMap<>();
+
+    private static volatile int sHeaderId = -1;
+    private static volatile int sTitleId = -1;
+
+    public static final class Pill extends TextView {
+        public List<UserData> mentions = Collections.emptyList();
+
+        public Pill(Context context) {
+            super(context);
+        }
+    }
+
+    public static void updateStoryMentions(View root, Object storyItem) {
+        try {
+            if (storyItem == null) return;
+            if (!Pref.viewStoryMentions()) return;
+
+            Activity activity = Utils.getActivity();
+            View targetRoot = root;
+            if (targetRoot == null && activity != null) {
+                targetRoot = activity.getWindow().getDecorView();
+            }
+            if (targetRoot == null) return;
+
+            final View finalRoot = targetRoot;
+            sLatestStoryItem.put(finalRoot, storyItem);
+
+            for (long delay : RETRY_DELAYS) {
+                if (delay == 0) {
+                    finalRoot.post(() -> applyMentions(finalRoot, storyItem));
+                } else {
+                    finalRoot.postDelayed(() -> applyMentions(finalRoot, storyItem), delay);
+                }
+            }
+        } catch (Throwable t) {
+            Logger.printException(() -> "updateStoryMentions failed", t);
+        }
+    }
+
+    private static void applyMentions(View root, Object storyItem) {
+        try {
+            if (root == null || storyItem == null) return;
+            if (sLatestStoryItem.get(root) != storyItem) return;
+
+            LinearLayout header = findHeader(root);
+            if (header == null) return;
+
+            HashSet<UserData> mentionSet = extractMentions(storyItem);
+            List<UserData> mentionsList = mentionSet != null && !mentionSet.isEmpty()
+                    ? new ArrayList<>(mentionSet)
+                    : Collections.emptyList();
+
+            Pill pill = findPillIn(header);
+
+            if (mentionsList.isEmpty()) {
+                if (pill != null) {
+                    pill.setVisibility(View.GONE);
+                }
+                return;
+            }
+
+            Context context = header.getContext();
+            if (pill == null) {
+                LinearLayout row = findTitleRow(header);
+                LinearLayout parentLayout = row != null ? row : header;
+                boolean isRow = parentLayout.getOrientation() == LinearLayout.HORIZONTAL;
+
+                pill = createPill(context, isRow);
+                parentLayout.addView(pill);
+            }
+
+            pill.mentions = mentionsList;
+            int count = mentionsList.size();
+            String label = count == 1 ? "1 mention" : (count + " mentions");
+            pill.setText(label);
+            pill.setContentDescription(label + ", see who this story mentions");
+            pill.setVisibility(View.VISIBLE);
+        } catch (Throwable t) {
+            Logger.printException(() -> "applyMentions failed", t);
+        }
+    }
+
+    private static Pill createPill(Context context, boolean isRow) {
+        Pill pill = new Pill(context);
+        pill.setTag(PILL_TAG);
+        pill.setTextColor(Color.WHITE);
+        pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        pill.setTypeface(Typeface.DEFAULT_BOLD);
+        pill.setSingleLine(true);
+        pill.setGravity(Gravity.CENTER_VERTICAL);
+
+        int padH = dp(context, 10);
+        int padV = dp(context, 3);
+        pill.setPadding(padH, padV, padH, padV);
+
+        GradientDrawable backing = new GradientDrawable();
+        backing.setColor(0x59000000);
+        backing.setCornerRadius(dp(context, 12));
+        pill.setBackground(backing);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        if (isRow) {
+            lp.setMarginStart(dp(context, 6));
+            lp.gravity = Gravity.CENTER_VERTICAL;
+        } else {
+            lp.topMargin = dp(context, 4);
+            lp.gravity = Gravity.START;
+        }
+        pill.setLayoutParams(lp);
+
+        pill.setClickable(true);
+        pill.setFocusable(true);
+
+        pill.setOnTouchListener(new View.OnTouchListener() {
+            private float downX, downY;
+            private boolean moved;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                ViewParent parent = v.getParent();
+                if (parent != null) {
+                    parent.requestDisallowInterceptTouchEvent(true);
+                }
+                int action = event.getActionMasked();
+                if (action == MotionEvent.ACTION_DOWN) {
+                    downX = event.getX();
+                    downY = event.getY();
+                    moved = false;
+                    return true;
+                } else if (action == MotionEvent.ACTION_MOVE) {
+                    if (Math.hypot(event.getX() - downX, event.getY() - downY) > 20) {
+                        moved = true;
+                    }
+                    return true;
+                } else if (action == MotionEvent.ACTION_UP) {
+                    if (!moved) {
+                        v.performClick();
+                    }
+                    return true;
+                }
+                return true;
+            }
+        });
+
+        pill.setOnClickListener(v -> {
+            try {
+                if (v instanceof Pill) {
+                    showMentionsDialog(v.getContext(), ((Pill) v).mentions);
+                }
+            } catch (Throwable t) {
+                Logger.printException(() -> "Pill click failed", t);
+            }
+        });
+
+        return pill;
+    }
+
+    public static void showMentionsDialog(Context context, List<UserData> people) {
+        if (context == null || people == null || people.isEmpty()) return;
+
+        Activity activity = Utils.getActivity();
+        if (activity == null && context instanceof Activity) {
+            activity = (Activity) context;
+        }
+        final Context dialogCtx = activity != null ? activity : context;
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(dialogCtx)
+                .setTitle(str("piko_vsm_title"))
+                .setNegativeButton(str("piko_close"), (d, which) -> d.dismiss());
+
+        Context themed = builder.getContext();
+        AlertDialog dialog = builder.create();
+
+        LinearLayout container = new LinearLayout(themed);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(0, dp(themed, 8), 0, dp(themed, 8));
+
+        for (UserData user : people) {
+            final String username = safeUsername(user);
+            container.addView(createMentionRow(themed, user, () -> {
+                dialog.dismiss();
+                PikoUtils.openUrl("instagram://user?username=" + username, true);
+            }));
+        }
+
+        ScrollView scroll = new ScrollView(themed);
+        scroll.addView(container);
+        dialog.setView(scroll);
+        dialog.show();
+    }
+
+    private static String safeUsername(UserData user) {
+        try {
+            return user != null ? user.getUsername() : "unknown";
+        } catch (Throwable t) {
+            return "unknown";
+        }
+    }
+
+    private static String safeFullName(UserData user) {
+        try {
+            return user != null ? user.getFullName() : null;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static View createMentionRow(Context themed, UserData person, Runnable onClick) {
+        LinearLayout row = new LinearLayout(themed);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setMinimumHeight(dp(themed, 56));
+        row.setPadding(dp(themed, 16), dp(themed, 8), dp(themed, 16), dp(themed, 8));
+
+        GradientDrawable surface = new GradientDrawable();
+        surface.setColor(0x1A888888);
+        surface.setCornerRadius(dp(themed, 10));
+        row.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33FFFFFF), surface, null));
+
+        LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        rowLp.setMargins(dp(themed, 12), dp(themed, 3), dp(themed, 12), dp(themed, 3));
+        row.setLayoutParams(rowLp);
+        row.setClickable(true);
+        row.setFocusable(true);
+
+        ImageView avatar = new ImageView(themed);
+        int avatarSize = dp(themed, 40);
+        LinearLayout.LayoutParams avatarLp = new LinearLayout.LayoutParams(avatarSize, avatarSize);
+        avatarLp.setMarginEnd(dp(themed, 14));
+        avatar.setLayoutParams(avatarLp);
+        avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
+
+        GradientDrawable avatarBg = new GradientDrawable();
+        avatarBg.setShape(GradientDrawable.OVAL);
+        avatarBg.setColor(0x33888888);
+        avatar.setImageDrawable(avatarBg);
+        avatar.setOutlineProvider(new ViewOutlineProvider() {
+            @Override
+            public void getOutline(View view, Outline outline) {
+                outline.setOval(0, 0, view.getWidth(), view.getHeight());
+            }
+        });
+        avatar.setClipToOutline(true);
+        row.addView(avatar);
+
+        loadAvatar(avatar, person);
+
+        LinearLayout textLayout = new LinearLayout(themed);
+        textLayout.setOrientation(LinearLayout.VERTICAL);
+        textLayout.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        String fullName = safeFullName(person);
+        if (fullName != null && !fullName.trim().isEmpty()) {
+            TextView nameView = new TextView(themed);
+            nameView.setText(fullName);
+            nameView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+            nameView.setTextColor(Color.WHITE);
+            nameView.setTypeface(Typeface.DEFAULT_BOLD);
+            nameView.setSingleLine(true);
+            nameView.setEllipsize(TextUtils.TruncateAt.END);
+            textLayout.addView(nameView);
+        }
+
+        TextView usernameView = new TextView(themed);
+        usernameView.setText("@" + safeUsername(person));
+        usernameView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        usernameView.setTextColor(0xFFB0B0B0);
+        usernameView.setSingleLine(true);
+        usernameView.setEllipsize(TextUtils.TruncateAt.END);
+        textLayout.addView(usernameView);
+
+        row.addView(textLayout);
+        row.setOnClickListener(v -> onClick.run());
+
+        return row;
+    }
+
+    private static void loadAvatar(ImageView view, UserData user) {
+        Utils.runOnBackgroundThread(() -> {
+            try {
+                String picUrl = null;
+                try {
+                    picUrl = user.getProfilePictureUrl();
+                } catch (Throwable ignored) {}
+
+                if (picUrl == null || picUrl.isEmpty()) return;
+
+                Bitmap cached = sAvatarCache.get(picUrl);
+                if (cached != null) {
+                    Utils.runOnMainThread(() -> view.setImageBitmap(cached));
+                    return;
+                }
+
+                HttpURLConnection conn = (HttpURLConnection) new URL(picUrl).openConnection();
+                conn.setConnectTimeout(4000);
+                conn.setReadTimeout(4000);
+                conn.connect();
+                try (InputStream in = conn.getInputStream()) {
+                    Bitmap bmp = BitmapFactory.decodeStream(in);
+                    if (bmp != null) {
+                        sAvatarCache.put(picUrl, bmp);
+                        Utils.runOnMainThread(() -> view.setImageBitmap(bmp));
+                    }
+                }
+            } catch (Throwable ignored) {}
+        });
+    }
+
+    private static LinearLayout findHeader(View root) {
+        int id = getHeaderId();
+        if (id == 0) return null;
+
+        View at = root;
+        for (int depth = 0; depth < MAX_DEPTH && at != null; depth++) {
+            View candidate = at.findViewById(id);
+            if (candidate instanceof LinearLayout) {
+                return (LinearLayout) candidate;
+            }
+            ViewParent parent = at.getParent();
+            at = parent instanceof View ? (View) parent : null;
+        }
+
+        Activity act = Utils.getActivity();
+        if (act != null) {
+            View decor = act.getWindow().getDecorView();
+            View candidate = decor.findViewById(id);
+            if (candidate instanceof LinearLayout) {
+                return (LinearLayout) candidate;
+            }
+        }
+        return null;
+    }
+
+    private static LinearLayout findTitleRow(ViewGroup header) {
+        int id = getTitleId();
+        if (id == 0) return null;
+
+        View title = header.findViewById(id);
+        if (title != null && title.getParent() instanceof LinearLayout) {
+            LinearLayout parent = (LinearLayout) title.getParent();
+            if (parent != header && parent.getOrientation() == LinearLayout.HORIZONTAL) {
+                return parent;
+            }
+        }
+        return null;
+    }
+
+    private static Pill findPillIn(ViewGroup header) {
+        LinearLayout row = findTitleRow(header);
+        if (row != null) {
+            Pill inRow = findPillChild(row);
+            if (inRow != null) return inRow;
+        }
+        return findPillChild(header);
+    }
+
+    private static Pill findPillChild(ViewGroup group) {
+        for (int i = 0; i < group.getChildCount(); i++) {
+            View child = group.getChildAt(i);
+            if (child instanceof Pill || PILL_TAG.equals(child.getTag())) {
+                return (Pill) child;
+            }
+        }
+        return null;
+    }
+
+    private static HashSet<UserData> extractMentions(Object item) {
+        try {
+            Object media = extractMedia(item);
+            if (media == null) return null;
+            return new MediaData(media).getMentionSet();
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static Object extractMedia(Object item) {
+        if (item == null) return null;
+        if (item.getClass().getName().contains("Media")) return item;
+
+        try {
+            for (Field f : item.getClass().getDeclaredFields()) {
+                if (f.getType().getName().contains("Media") && !Modifier.isStatic(f.getModifiers())) {
+                    f.setAccessible(true);
+                    Object val = f.get(item);
+                    if (val != null) return val;
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        try {
+            Method m = item.getClass().getMethod("getMedia");
+            return m.invoke(item);
+        } catch (Throwable ignored) {}
+
+        return item;
+    }
+
+    private static int getHeaderId() {
+        if (sHeaderId == -1) {
+            sHeaderId = ResourceUtils.getIdentifier(ResourceType.ID, HEADER_CONTAINER_ID);
+        }
+        return sHeaderId;
+    }
+
+    private static int getTitleId() {
+        if (sTitleId == -1) {
+            sTitleId = ResourceUtils.getIdentifier(ResourceType.ID, TITLE_ID);
+        }
+        return sTitleId;
+    }
+
+    private static int dp(Context context, int dpValue) {
+        return Math.round(dpValue * context.getResources().getDisplayMetrics().density);
+    }
+}
