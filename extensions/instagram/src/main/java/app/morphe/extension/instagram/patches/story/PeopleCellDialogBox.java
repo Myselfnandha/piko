@@ -79,6 +79,8 @@ public class PeopleCellDialogBox {
             list.setOnItemClickListener((parent, view, position, id) -> peopleCells.get(position).performClick());
         }
 
+        dialog.setOnDismissListener(d -> StoryMentionsView.resumeStoryPlayback(context));
+        dialog.setOnCancelListener(d -> StoryMentionsView.resumeStoryPlayback(context));
         dialog.show();
         Window window = dialog.getWindow();
         if (window != null) {

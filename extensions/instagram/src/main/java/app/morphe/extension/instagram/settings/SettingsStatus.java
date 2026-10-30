@@ -229,12 +229,6 @@ public class SettingsStatus {
     public static boolean downloadWithExternalDownloader = false;
     public static void downloadWithExternalDownloader() { downloadWithExternalDownloader = true; }
     public static boolean downloadSection(){return (SettingsStatus.downloadMedia || saveMediaCommentButton || SettingsStatus.downloadWithExternalDownloader);}
-
-    //Instants Section
-    public static boolean instantsDownload = false;
-    public static void instantsDownload() {
-        instantsDownload = true;
-    }
     
     //Navigation Section
     public static boolean hideNavigationButtons = false;
@@ -316,7 +310,6 @@ public class SettingsStatus {
         FLAGS.put(str("piko_disable_typing_status"),SettingsStatus.disableTypingStatus);
         FLAGS.put(str("piko_view_live_anonymously"),SettingsStatus.viewLiveAnonymously);
         FLAGS.put(str("piko_view_stories_anonymously"),SettingsStatus.viewStoriesAnonymously);
-        FLAGS.put(str("piko_instants_title"),SettingsStatus.instantsDownload);
 
         FLAGS.put(str("piko_sanitize_share_links"),SettingsStatus.sanitizeShareLinks);
         FLAGS.put(str("piko_custom_sharing_domain"),SettingsStatus.customSharingDomain);

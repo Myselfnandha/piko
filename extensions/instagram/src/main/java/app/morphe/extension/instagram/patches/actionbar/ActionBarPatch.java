@@ -41,6 +41,7 @@ import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
 
 import com.instagram.common.session.UserSession;
+import app.morphe.extension.instagram.settings.preference.fragments.FragmentHook;
 
 public class ActionBarPatch {
 
@@ -198,23 +199,56 @@ public class ActionBarPatch {
             UserData userData = new UserData(userObject);
             Boolean isSelfProfile = userData.getUserId().equals(userSession.getUserId());
 
-            if(pref.contains(Constants.AB_SETTINGS_ICON) && isSelfProfile) {
-                UI.pikoSettingsGear(viewGroup);
-            }
+            if (isSelfProfile) {
+                if (pref.contains(Constants.AB_SETTINGS_ICON)) {
+                    UI.pikoSettingsGear(viewGroup);
+                }
 
-            if(pref.contains(Constants.AB_GHOST_MODE_ICON) && isSelfProfile) {
-                ghostModeToggle(viewGroup);
-            }
+                if (pref.contains(Constants.AB_GHOST_MODE_ICON)) {
+                    ghostModeToggle(viewGroup);
+                }
 
-            if (!isSelfProfile) {
+                attachSettingsGearLongPress(viewGroup);
+            } else {
                 UI.addImageViewToViewGroup(viewGroup, UI.DRAWABLE_INFO_ICON, () -> ProfileMoreOption.moreOptionsDailogueBox(activity, userData));
             }
-
 
         } catch (Exception e) {
             Logger.printException(() -> "userProfileActionBarButton: ", e);
             PikoUtils.logger(e);
         }
+    }
+
+    private static void attachSettingsGearLongPress(ViewGroup viewGroup) {
+        if (viewGroup == null) return;
+        View.OnLongClickListener longClickListener = v -> {
+            try {
+                FragmentHook.startSettings();
+                return true;
+            } catch (Throwable t) {
+                Logger.printException(() -> "Failed opening piko settings on long click", t);
+                return false;
+            }
+        };
+
+        for (int i = 0; i < viewGroup.getChildCount(); i++) {
+            View child = viewGroup.getChildAt(i);
+            if (child != null) {
+                child.setOnLongClickListener(longClickListener);
+            }
+        }
+
+        viewGroup.setOnHierarchyChangeListener(new ViewGroup.OnHierarchyChangeListener() {
+            @Override
+            public void onChildViewAdded(View parent, View child) {
+                if (child != null) {
+                    child.setOnLongClickListener(longClickListener);
+                }
+            }
+
+            @Override
+            public void onChildViewRemoved(View parent, View child) {}
+        });
     }
 
     public static void chatActionBarButton(ViewGroup viewGroup) {

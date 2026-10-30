@@ -19,7 +19,12 @@ import android.graphics.Outline;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
+import android.os.SystemClock;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -60,9 +65,9 @@ public final class StoryMentionsView {
     private static final String TITLE_ID = "reel_viewer_title";
     private static final String PILL_TAG = "piko_story_mention_pill";
     private static final int MAX_DEPTH = 8;
-    private static final long[] RETRY_DELAYS = {0, 250, 600};
+    private static final long[] RETRY_DELAYS = {0, 150, 350, 700};
 
-    private static final Map<View, Object> sLatestStoryItem = new WeakHashMap<>();
+    private static final Map<View, Object> sLatestHeaderItem = new WeakHashMap<>();
     private static final Map<String, Bitmap> sAvatarCache = new WeakHashMap<>();
 
     private static volatile int sHeaderId = -1;
@@ -93,8 +98,6 @@ public final class StoryMentionsView {
             if (targetRoot == null) return;
 
             final View finalRoot = targetRoot;
-            sLatestStoryItem.put(finalRoot, storyItem);
-
             for (long delay : RETRY_DELAYS) {
                 if (delay == 0) {
                     finalRoot.post(() -> applyMentions(finalRoot, storyItem));
@@ -110,41 +113,51 @@ public final class StoryMentionsView {
     private static void applyMentions(View root, Object storyItem) {
         try {
             if (root == null || storyItem == null) return;
-            if (sLatestStoryItem.get(root) != storyItem) return;
 
-            LinearLayout header = findHeader(root);
-            if (header == null) return;
+            List<LinearLayout> headers = findVisibleHeaders(root);
+            if (headers.isEmpty()) return;
 
             HashSet<UserData> mentionSet = extractMentions(storyItem);
             List<UserData> mentionsList = mentionSet != null && !mentionSet.isEmpty()
                     ? new ArrayList<>(mentionSet)
                     : Collections.emptyList();
 
-            Pill pill = findPillIn(header);
+            for (LinearLayout header : headers) {
+                sLatestHeaderItem.put(header, storyItem);
+                Pill pill = findPillIn(header);
 
-            if (mentionsList.isEmpty()) {
-                if (pill != null) {
-                    pill.setVisibility(View.GONE);
+                if (mentionsList.isEmpty()) {
+                    if (pill != null) {
+                        pill.setVisibility(View.GONE);
+                    }
+                    continue;
                 }
-                return;
+
+                Context context = header.getContext();
+                if (pill == null) {
+                    LinearLayout row = findTitleRow(header);
+                    LinearLayout parentLayout = row != null ? row : header;
+                    boolean isRow = parentLayout.getOrientation() == LinearLayout.HORIZONTAL;
+
+                    pill = createPill(context, isRow);
+                    parentLayout.addView(pill);
+                }
+
+                pill.mentions = mentionsList;
+                int count = mentionsList.size();
+
+                SpannableStringBuilder ssb = new SpannableStringBuilder();
+                ssb.append("@");
+                ssb.setSpan(new ForegroundColorSpan(Color.WHITE), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                int numStart = ssb.length();
+                ssb.append(String.valueOf(count));
+                ssb.setSpan(new ForegroundColorSpan(Color.parseColor("#FF3B30")), numStart, ssb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                ssb.setSpan(new StyleSpan(Typeface.BOLD), 0, ssb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+                pill.setText(ssb);
+                pill.setContentDescription("@" + count + ", see who this story mentions");
+                pill.setVisibility(View.VISIBLE);
             }
-
-            Context context = header.getContext();
-            if (pill == null) {
-                LinearLayout row = findTitleRow(header);
-                LinearLayout parentLayout = row != null ? row : header;
-                boolean isRow = parentLayout.getOrientation() == LinearLayout.HORIZONTAL;
-
-                pill = createPill(context, isRow);
-                parentLayout.addView(pill);
-            }
-
-            pill.mentions = mentionsList;
-            int count = mentionsList.size();
-            String label = count == 1 ? "1 mention" : (count + " mentions");
-            pill.setText(label);
-            pill.setContentDescription(label + ", see who this story mentions");
-            pill.setVisibility(View.VISIBLE);
         } catch (Throwable t) {
             Logger.printException(() -> "applyMentions failed", t);
         }
@@ -153,19 +166,19 @@ public final class StoryMentionsView {
     private static Pill createPill(Context context, boolean isRow) {
         Pill pill = new Pill(context);
         pill.setTag(PILL_TAG);
-        pill.setTextColor(Color.WHITE);
         pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         pill.setTypeface(Typeface.DEFAULT_BOLD);
         pill.setSingleLine(true);
+        pill.setEllipsize(TextUtils.TruncateAt.END);
         pill.setGravity(Gravity.CENTER_VERTICAL);
 
-        int padH = dp(context, 10);
-        int padV = dp(context, 3);
+        int padH = dp(context, 7);
+        int padV = dp(context, 2);
         pill.setPadding(padH, padV, padH, padV);
 
         GradientDrawable backing = new GradientDrawable();
-        backing.setColor(0x59000000);
-        backing.setCornerRadius(dp(context, 12));
+        backing.setColor(0x73000000);
+        backing.setCornerRadius(dp(context, 10));
         pill.setBackground(backing);
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
@@ -189,14 +202,14 @@ public final class StoryMentionsView {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 ViewParent parent = v.getParent();
-                if (parent != null) {
-                    parent.requestDisallowInterceptTouchEvent(true);
-                }
                 int action = event.getActionMasked();
                 if (action == MotionEvent.ACTION_DOWN) {
                     downX = event.getX();
                     downY = event.getY();
                     moved = false;
+                    if (parent != null) {
+                        parent.requestDisallowInterceptTouchEvent(true);
+                    }
                     return true;
                 } else if (action == MotionEvent.ACTION_MOVE) {
                     if (Math.hypot(event.getX() - downX, event.getY() - downY) > 20) {
@@ -204,8 +217,16 @@ public final class StoryMentionsView {
                     }
                     return true;
                 } else if (action == MotionEvent.ACTION_UP) {
+                    if (parent != null) {
+                        parent.requestDisallowInterceptTouchEvent(false);
+                    }
                     if (!moved) {
                         v.performClick();
+                    }
+                    return true;
+                } else if (action == MotionEvent.ACTION_CANCEL) {
+                    if (parent != null) {
+                        parent.requestDisallowInterceptTouchEvent(false);
                     }
                     return true;
                 }
@@ -257,7 +278,42 @@ public final class StoryMentionsView {
         ScrollView scroll = new ScrollView(themed);
         scroll.addView(container);
         dialog.setView(scroll);
+
+        dialog.setOnDismissListener(d -> resumeStoryPlayback(dialogCtx));
+        dialog.setOnCancelListener(d -> resumeStoryPlayback(dialogCtx));
+
         dialog.show();
+    }
+
+    public static void resumeStoryPlayback(Context context) {
+        try {
+            Activity act = Utils.getActivity();
+            if (act == null && context instanceof Activity) {
+                act = (Activity) context;
+            }
+            if (act == null) return;
+
+            final Activity finalAct = act;
+            View decor = finalAct.getWindow() != null ? finalAct.getWindow().getDecorView() : null;
+            if (decor == null) return;
+
+            decor.postDelayed(() -> {
+                try {
+                    long now = SystemClock.uptimeMillis();
+                    MotionEvent cancel = MotionEvent.obtain(now, now, MotionEvent.ACTION_CANCEL, 0f, 0f, 0);
+                    decor.dispatchTouchEvent(cancel);
+                    cancel.recycle();
+
+                    MotionEvent up = MotionEvent.obtain(now, now, MotionEvent.ACTION_UP, 0f, 0f, 0);
+                    decor.dispatchTouchEvent(up);
+                    up.recycle();
+                } catch (Throwable t) {
+                    Logger.printException(() -> "resumeStoryPlayback dispatch failed", t);
+                }
+            }, 100);
+        } catch (Throwable t) {
+            Logger.printException(() -> "resumeStoryPlayback failed", t);
+        }
     }
 
     private static String safeUsername(UserData user) {
@@ -378,9 +434,49 @@ public final class StoryMentionsView {
         });
     }
 
-    private static LinearLayout findHeader(View root) {
+    private static List<LinearLayout> findVisibleHeaders(View root) {
+        List<LinearLayout> headers = new ArrayList<>();
         int id = getHeaderId();
-        if (id == 0) return null;
+        if (id == 0 || root == null) return headers;
+
+        collectVisibleHeaders(root, id, headers);
+        if (headers.isEmpty()) {
+            Activity act = Utils.getActivity();
+            if (act != null) {
+                View decor = act.getWindow().getDecorView();
+                if (decor != null && decor != root) {
+                    collectVisibleHeaders(decor, id, headers);
+                }
+            }
+        }
+        if (headers.isEmpty()) {
+            LinearLayout fallback = findAnyHeader(root);
+            if (fallback != null) {
+                headers.add(fallback);
+            }
+        }
+        return headers;
+    }
+
+    private static void collectVisibleHeaders(View view, int id, List<LinearLayout> out) {
+        if (view == null) return;
+        if (view.getId() == id && view instanceof LinearLayout) {
+            if (view.isShown() || view.getVisibility() == View.VISIBLE) {
+                out.add((LinearLayout) view);
+            }
+            return;
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup vg = (ViewGroup) view;
+            for (int i = 0; i < vg.getChildCount(); i++) {
+                collectVisibleHeaders(vg.getChildAt(i), id, out);
+            }
+        }
+    }
+
+    private static LinearLayout findAnyHeader(View root) {
+        int id = getHeaderId();
+        if (id == 0 || root == null) return null;
 
         View at = root;
         for (int depth = 0; depth < MAX_DEPTH && at != null; depth++) {
@@ -453,15 +549,19 @@ public final class StoryMentionsView {
         if (item == null) return null;
         if (item.getClass().getName().contains("Media")) return item;
 
-        try {
-            for (Field f : item.getClass().getDeclaredFields()) {
-                if (f.getType().getName().contains("Media") && !Modifier.isStatic(f.getModifiers())) {
-                    f.setAccessible(true);
-                    Object val = f.get(item);
-                    if (val != null) return val;
+        Class<?> clazz = item.getClass();
+        while (clazz != null && clazz != Object.class) {
+            try {
+                for (Field f : clazz.getDeclaredFields()) {
+                    if (f.getType().getName().contains("Media") && !Modifier.isStatic(f.getModifiers())) {
+                        f.setAccessible(true);
+                        Object val = f.get(item);
+                        if (val != null) return val;
+                    }
                 }
-            }
-        } catch (Throwable ignored) {}
+            } catch (Throwable ignored) {}
+            clazz = clazz.getSuperclass();
+        }
 
         try {
             Method m = item.getClass().getMethod("getMedia");

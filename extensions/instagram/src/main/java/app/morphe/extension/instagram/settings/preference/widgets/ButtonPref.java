@@ -96,10 +96,6 @@ public class ButtonPref extends Preference {
                     } else if (key.equals("piko_download_id_mapping")) {
                         DownloadMapping.downloadMapping();
 
-                    } else if (key.equals("piko_view_saved_instants")) {
-                        ActivityHook.launchActivity(context,
-                                app.morphe.extension.instagram.patches.instants.InstantsVaultActivity.class);
-
                     } else if (key.equals("view_deleted_messages")) {
                         SavedMessagesHook.openDeletedMessages(context);
 
@@ -170,7 +166,6 @@ public class ButtonPref extends Preference {
                 || key.equals("piko_export_experiment_mappings")
                 || key.equals("piko_download_id_mapping")
                 || key.equals("piko_rec_flags_refresh_file")
-                || key.equals("piko_view_saved_instants")
                 || key.equals("piko_pref_add_font")
                 || key.equals("piko_pref_delete_font")
                 || key.equals("view_deleted_messages")));
@@ -231,9 +226,6 @@ public class ButtonPref extends Preference {
         }
         if (key.equals(Constants.PIKO_FRAGMENT_FILTER_CONTENT)) {
             return UI.DRAWABLE_SHARE_TO_REEL;
-        }
-        if(key.equals(Constants.PIKO_FRAGMENT_INSTANTS)){
-            return UI.DRAWABLE_INSTANTS_ICON;
         }
         return null;
     }
